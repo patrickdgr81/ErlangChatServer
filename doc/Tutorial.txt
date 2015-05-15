@@ -1,0 +1,2 @@
+
+We have a client file chatClient.erl and a server file chatServer.erl.
