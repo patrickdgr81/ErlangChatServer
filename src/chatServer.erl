@@ -1,17 +1,24 @@
 -module(chatServer).
 -behaviour(gen_server).
 
--export([start_server/1]).
+-export([start_server/0]).
+
+-export([init/1, 
+		 handle_call/3, 
+		 handle_cast/2, 
+		 handle_info/2, 
+		 code_change/3, 
+		 terminate/2]).
 
 -record(server_state, {activePids,
                 history}).
 
-start_server(M) -> 
+start_server() -> 
 	%% IMPORTANT: Start the empd daemon!
     os:cmd("epmd -daemon"),
     %% Register yourself as chatServer
     net_kernel:start([chatServer, shortnames]),
-    gen_server:start({local, ?MODULE}, ?MODULE, {}, []);.
+    gen_server:start({local, ?MODULE}, ?MODULE, {}, []).
 
 %%% Server functions
 init(_Args) ->  
@@ -46,7 +53,7 @@ handle_cast({message, Message}, S) ->
 	{noreply, S#server_state{activePids = lists:append(S#server_state.history, [Message])}}.
 
 %%Process exited or died on its own, we remove it from the list of active pids
-handle_info({'DOWN', MonitorRef, Type, Pid, Reason}, S) ->
+handle_info({'DOWN', _MonitorRef, _Type, Pid, _Reason}, S) ->
 	io:format("!~p Pid that died: ~p~n", [now(), Pid]),
 	{noreply, S#server_state{activePids = lists:delete(Pid, S#server_state.activePids)}};
 
@@ -54,12 +61,15 @@ handle_info(Message,S) ->
 	io:format("!~p Got Unexpected Message: ~p~n", [now(), Message]),
 	{noreply, S}.
 
+terminate(_Reason, _State) ->
+    io:format("!~p Terminating, reason: ~p~n", [now(), _Reason]).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%% END ASYNCRHONOUS MESSAGES %%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% HELPER FUNCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%Tell all active people in the chatroom about the new message
-tellEveryone([], M) -> ok;
+tellEveryone([], _) -> ok;
 tellEveryone([Pid|T], M) -> Pid ! {message, M},
 							tellEveryone(T,M).
 
