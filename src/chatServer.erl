@@ -40,6 +40,7 @@ handle_call(getHistory, _From, S) ->
 handle_call(requestJoin, {Pid, _Tag}, S) ->
 	%%Monitor the process in case it crashes. 
 	%%If its gone, we remove it from the chatroom later
+	io:format("!~p New Process in chatroom ~p~n", [now(), Pid]),
 	erlang:monitor(process, Pid),
 	{reply, ok, S#server_state{activePids = lists:append(S#server_state.activePids, [Pid])}}.
 
@@ -72,10 +73,3 @@ terminate(_Reason, _State) ->
 tellEveryone([], _) -> ok;
 tellEveryone([Pid|T], M) -> Pid ! {message, M},
 							tellEveryone(T,M).
-
-
-
-
-
-
-	
