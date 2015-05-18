@@ -18,6 +18,7 @@ start_server() ->
     os:cmd("epmd -daemon"),
     %% Register yourself as chatServer
     net_kernel:start([chatServer, shortnames]),
+    register(chatServerRegister, self()),
     gen_server:start({local, ?MODULE}, ?MODULE, {}, []).
 
 %%% Server functions
@@ -58,8 +59,8 @@ handle_info({'DOWN', _MonitorRef, _Type, Pid, _Reason}, S) ->
 	io:format("!~p Pid that died: ~p~n", [now(), Pid]),
 	{noreply, S#server_state{activePids = lists:delete(Pid, S#server_state.activePids)}};
 
-handle_info(Message,S) ->
-	io:format("!~p Got Unexpected Message: ~p~n", [now(), Message]),
+handle_info(_Message,S) ->
+	io:format("!~p Got Unexpected Message: ~p~n", [now(), _Message]),
 	{noreply, S}.
 
 terminate(_Reason, _State) ->

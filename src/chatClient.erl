@@ -3,7 +3,7 @@
 
 -export([start_client/1,receiveMessage/0]).
 
-start_client(Name) ->
+start_client(Name, Pid) ->
     %% IMPORTANT: Start the empd daemon!
     os:cmd("epmd -daemon"),
     % format microseconds of timestamp to get an
@@ -14,10 +14,9 @@ start_client(Name) ->
         false -> net_kernel:start([list_to_atom(Name), shortnames]),
                  register(Name, self())
     end,
-    Init = gen_server:start({local, ?MODULE}, ?MODULE, {}, []),
+    Init = gen_server:call(Pid, requestJoin),
     case Init of
-        {ok, Pid} -> io:format("!~p Created gen_server~n", [now()]),
-                     gen_server:call(Pid, requestJoin),
+        ok -> io:format("!~p Connected to server~n", [now()]),
                      spawn(?MODULE, typeInput, Pid),
                      receiveMessage();
         _ -> io:format("!~p Failed to Create gen_server, exiting~n", [now()])
