@@ -17,10 +17,15 @@ start_server() ->
 	%% IMPORTANT: Start the empd daemon!
     os:cmd("epmd -daemon"),
     %% Register yourself as chatServer
-    net_kernel:start([chatServer, shortnames]),
-    register(chatServerRegister, self()),
-    gen_server:start({local, ?MODULE}, ?MODULE, {}, []).
-
+    net_kernel:start([chatServerStart, shortnames]),
+    
+    %% May not need this line, 
+    %%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% register(chatServerRegister, self()),
+    %%%%%%%%%%%%%%%%%%%%%%%%%%
+    io:format("Trying to start gen_server~n"),
+    gen_server:start({global, chatServer}, chatServer, {}, []),
+    io:format("Server successfully started~n").
 %%% Server functions
 init(_Args) ->  
     {ok, #server_state{activePids = [], history = []}}.
@@ -50,9 +55,13 @@ handle_call(requestJoin, {Pid, _Tag}, S) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%% ASYNCRHONOUS MESSAGES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 handle_cast({message, Message}, S) -> 
-	io:format("!~p Got Message: ~p~n", [now(), Message]),
+	io:format("!~p Got Message: ~s~n", [now(), Message]),
 	tellEveryone(S#server_state.activePids, Message),
-	{noreply, S#server_state{activePids = lists:append(S#server_state.history, [Message])}}.
+	{noreply, S#server_state{activePids = lists:append(S#server_state.history, [Message])}};
+
+handle_cast(_Message, S) -> 
+	io:format("!~p Got Unexpected Message: ~p~n", [now(), _Message]),
+	{noreply, S}.
 
 %%Process exited or died on its own, we remove it from the list of active pids
 handle_info({'DOWN', _MonitorRef, _Type, Pid, _Reason}, S) ->
