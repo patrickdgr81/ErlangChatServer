@@ -16,16 +16,17 @@
 start_server() -> 
 	%% IMPORTANT: Start the empd daemon!
     os:cmd("epmd -daemon"),
+    
     %% Register yourself as chatServer
     net_kernel:start([chatServerStart, shortnames]),
     
-    %% May not need this line, 
+    %% Since this is a gen_server, we don't need this line
     %%%%%%%%%%%%%%%%%%%%%%%%%%
     %% register(chatServerRegister, self()),
     %%%%%%%%%%%%%%%%%%%%%%%%%%
-    io:format("Trying to start gen_server~n"),
-    gen_server:start({global, chatServer}, chatServer, {}, []),
-    io:format("Server successfully started~n").
+    io:format("Trying to start gen_server...~n"),
+    gen_server:start({global, chatServer}, chatServer, {}, []).
+
 %%% Server functions
 init(_Args) ->  
     {ok, #server_state{activePids = [], history = []}}.
@@ -43,12 +44,23 @@ handle_call(getHistory, _From, S) ->
 	{reply, S#server_state.history, S};
 
 %%A new client requested to join
-handle_call(requestJoin, {Pid, _Tag}, S) ->
+handle_call({requestJoin, Name}, {Pid, _Tag}, S) ->
 	%%Monitor the process in case it crashes. 
 	%%If its gone, we remove it from the chatroom later
-	io:format("!~p New Process in chatroom ~p~n", [now(), Pid]),
+	io:format("New Process in chatroom ~p~n", [Pid]),
 	erlang:monitor(process, Pid),
-	{reply, ok, S#server_state{activePids = lists:append(S#server_state.activePids, [Pid])}}.
+	case net_adm:ping(Name) of
+		pong ->
+			io:format("Accepted Name to chatroom~n"),
+			{reply, requestAccepted, S#server_state{activePids = lists:append(S#server_state.activePids, [Pid])}};
+		pang ->
+			io:format("Invalid name received...~n"),
+			{noreply, S}
+	end;
+
+handle_call(_Message, {_Pid, _Tag}, S) ->
+	io:format("Got Unexpected Message: ~p~n", [_Message]),
+	{noreply, S}. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% END SYNCRHONOUS MESSAGES %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

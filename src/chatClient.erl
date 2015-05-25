@@ -3,24 +3,28 @@
 
 -export([start_client/1,receiveMessage/0]).
 
-start_client(Name, Pid) ->
+-define(SERVERPID, chatServerStart@knuth).
+-define(SERVER, chatServer).
+
+
+start_client(Name, Computer, Pid) ->
     %% IMPORTANT: Start the empd daemon!
     os:cmd("epmd -daemon"),
-    % format microseconds of timestamp to get an
-    % effectively-unique node name
-    case is_atom(Name) of 
-        true -> net_kernel:start([Name, shortnames]),
-                register(Name, self());
-        false -> net_kernel:start([list_to_atom(Name), shortnames]),
-                 register(Name, self())
-    end,
-    Init = gen_server:call(Pid, requestJoin),
-    case Init of
-        ok -> io:format("!~p Connected to server~n", [now()]),
-                     spawn(?MODULE, typeInput, Pid),
-                     receiveMessage();
-        _ -> io:format("!~p Failed to Create gen_server, exiting~n", [now()])
+    
+    net_kernel:start([Name, shortnames]),
+    register(Name, self());
+
+    case net_adm:ping(?SERVERPID) of
+        pong ->
+            SentString = list_to_atom(Name ++ "@" ++ Computer),
+            gen_server:call({global, ?SERVER}, {requestJoin, SentString}),
+            spawn(?MODULE, typeInput, ),
+            receiveMessage();
+        pang ->
+            io:format("Server is down at the moment...~n"),
+            erlang:halt()
     end.
+    
 
 %%% Helper functions
 receiveMessage() ->
