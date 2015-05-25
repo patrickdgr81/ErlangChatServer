@@ -3,7 +3,7 @@
 
 -export([start_client/1,receiveMessage/0]).
 
--define(SERVERPID, chatServerStart@knuth).
+-define(SERVERPID, chatServer@knuth).
 -define(SERVER, chatServer).
 
 

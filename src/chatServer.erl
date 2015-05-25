@@ -18,11 +18,11 @@ start_server() ->
     os:cmd("epmd -daemon"),
     
     %% Register yourself as chatServer
-    net_kernel:start([chatServerStart, shortnames]),
+    net_kernel:start([chatServer, shortnames]),
     
     %% Since this is a gen_server, we don't need this line
     %%%%%%%%%%%%%%%%%%%%%%%%%%
-    %% register(chatServerRegister, self()),
+    register(chatServer, self()),
     %%%%%%%%%%%%%%%%%%%%%%%%%%
     io:format("Trying to start gen_server...~n"),
     gen_server:start({global, chatServer}, chatServer, {}, []).
