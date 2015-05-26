@@ -18,17 +18,17 @@ start_server() ->
     os:cmd("epmd -daemon"),
     
     %% Register yourself as chatServer
-    net_kernel:start([chatServer, shortnames]),
-    
-    %% Since this is a gen_server, we don't need this line
-    %%%%%%%%%%%%%%%%%%%%%%%%%%
-    register(chatServer, self()),
-    %%%%%%%%%%%%%%%%%%%%%%%%%%
-    io:format("Trying to start gen_server...~n"),
+    net_kernel:start([chatServer, shortnames]),  
+    io:format("Registering gen_server as chatServer@knuth...~n"),
     gen_server:start({global, chatServer}, chatServer, {}, []).
 
 %%% Server functions
 init(_Args) ->  
+	%% Since this is a gen_server, we don't need this line, but for some
+	%% reason init is not registering with the desired name.
+    %%%%%%%%%%%%%%%%%%%%%%%%%%
+    register(chatServer, self()),
+    %%%%%%%%%%%%%%%%%%%%%%%%%%
     {ok, #server_state{activePids = [], history = []}}.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -67,25 +67,25 @@ handle_call(_Message, {_Pid, _Tag}, S) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%% ASYNCRHONOUS MESSAGES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 handle_cast({message, Message}, S) -> 
-	io:format("!~p Got Message: ~s~n", [now(), Message]),
+	io:format("Got Message: ~s~n", [Message]),
 	tellEveryone(S#server_state.activePids, Message),
 	{noreply, S#server_state{activePids = lists:append(S#server_state.history, [Message])}};
 
 handle_cast(_Message, S) -> 
-	io:format("!~p Got Unexpected Message: ~p~n", [now(), _Message]),
+	io:format("Got Unexpected Message: ~p~n", [_Message]),
 	{noreply, S}.
 
 %%Process exited or died on its own, we remove it from the list of active pids
 handle_info({'DOWN', _MonitorRef, _Type, Pid, _Reason}, S) ->
-	io:format("!~p Pid that died: ~p~n", [now(), Pid]),
+	io:format("Pid that died: ~p, removing from list~n", [Pid]),
 	{noreply, S#server_state{activePids = lists:delete(Pid, S#server_state.activePids)}};
 
 handle_info(_Message,S) ->
-	io:format("!~p Got Unexpected Message: ~p~n", [now(), _Message]),
+	io:format("Got Unexpected Message: ~p~n", [_Message]),
 	{noreply, S}.
 
 terminate(_Reason, _State) ->
-    io:format("!~p Terminating, reason: ~p~n", [now(), _Reason]).
+    io:format("Terminating, reason: ~p~n", [_Reason]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% END ASYNCRHONOUS MESSAGES %%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
